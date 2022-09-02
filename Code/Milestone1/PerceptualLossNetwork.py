@@ -31,7 +31,7 @@ class PerceptualLossNetwork(torch.nn.Module):
     def calc_loss(self, input, target):
         input_features = self.forward(input)
         target_features = self.forward(target)
-        loss = 0
+        loss = F.mse_loss(input, target)
         for input_feature, target_feature in zip(input_features, target_features):
             loss += F.mse_loss(input_feature, target_feature, reduction='sum')
-        return loss / (input_feature.size(0)*len(input_features._fields))
+        return loss
