@@ -5,9 +5,9 @@ from collections import namedtuple
 
 
 # works only with vgg16 model
-class PerceptualLossNetwork(torch.nn.Module):
+class VggPerceptualLossNetwork(torch.nn.Module):
     def __init__(self):
-        super(PerceptualLossNetwork, self).__init__()
+        super(VggPerceptualLossNetwork, self).__init__()
         self.vgg_model = models.vgg16(pretrained=True)
         if torch.cuda.is_available():
             self.vgg_model.cuda()

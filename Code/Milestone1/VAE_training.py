@@ -6,7 +6,9 @@ import torch
 import matplotlib.pyplot as plt
 import numpy as np
 import pathlib
-import PerceptualLossNetwork
+import VggPerceptualLossNetwork
+import VggPerceptualLossNetworkTalVersion
+import MomentumEncoder
 import scipy
 
 
@@ -14,6 +16,7 @@ import scipy
 BATCH_SIZE = 128  # usually 32/64/128/256
 LEARNING_RATE = 2e-4  # for the gradient optimizer
 NUM_EPOCHS = 200  # how many epochs to run?
+# NUM_EPOCHS = 1
 
 
 class TrainResults:
@@ -22,23 +25,53 @@ class TrainResults:
         self.kl_errors = []
         self.losses = []
 
-    def plot_results(self, results_directory, vae_loss_type, beta, recon_y_label, kl_y_label, loss_y_label):
+    def get_plot_params(self, results_directory, vae_loss_type, beta, dataset_name):
+        save_path = results_directory / vae_loss_type / (dataset_name + "_beta_" + str(beta) + '.png')
+        title = save_path.stem
+        return save_path, title
+
+    def create_plot(self, save_path,recon_y_label, kl_y_label, loss_y_label, title):
+        fig = plt.figure(figsize=(32, 16))
+        fig.suptitle(title, fontsize=40)
+        x = range(1, NUM_EPOCHS + 1)
+
+        ax = fig.add_subplot(1, 3, 1)
+        ax.plot(x, self.losses)
+        ax.set_xlabel('Epoch')
+        ax.set_ylabel(loss_y_label)
+        ax.set_title(loss_y_label)
+
+        ax = fig.add_subplot(1, 3, 2)
+        ax.plot(x, self.recon_errors)
+        ax.set_xlabel('Epoch')
+        ax.set_ylabel(recon_y_label)
+        ax.set_title(recon_y_label)
+
+        ax = fig.add_subplot(1, 3, 3)
+        ax.plot(x, self.kl_errors)
+        ax.set_xlabel('Epoch')
+        ax.set_ylabel(kl_y_label)
+        ax.set_title(kl_y_label)
+
+        fig.savefig(save_path)
+
+    def plot_results(self, results_directory, vae_loss_type, beta, recon_y_label, kl_y_label, loss_y_label, dataset_name):
         # prepare plots params
-        recon_save_path, recon_title = get_plot_params(results_directory, vae_loss_type, beta, recon_y_label)
-        kl_save_path, kl_title = get_plot_params(results_directory, vae_loss_type, beta, kl_y_label)
-        loss_save_path, loss_title = get_plot_params(results_directory, vae_loss_type, beta, loss_y_label)
+
+        save_path, title = self.get_plot_params(results_directory, vae_loss_type, beta, dataset_name)
+        self.create_plot(save_path, recon_y_label, kl_y_label, loss_y_label, title)
+
+        # recon_save_path, recon_title = get_plot_params(results_directory, vae_loss_type, beta, recon_y_label)
+        # kl_save_path, kl_title = get_plot_params(results_directory, vae_loss_type, beta, kl_y_label)
+        # loss_save_path, loss_title = get_plot_params(results_directory, vae_loss_type, beta, loss_y_label)
         # create plots
-        create_plot(self.recon_errors, recon_save_path, recon_y_label, recon_title)
-        create_plot(self.kl_errors, kl_save_path, kl_y_label, kl_title)
-        create_plot(self.losses, loss_save_path, loss_y_label, loss_title)
+        # create_plot(self.recon_errors, recon_save_path, recon_y_label, recon_title)
+        # create_plot(self.kl_errors, kl_save_path, kl_y_label, kl_title)
+        # create_plot(self.losses, loss_save_path, loss_y_label, loss_title)
 
 
-def train(dataset_name, dataloader, loss_type, beta, train_results, perceptual_loss_network):
-    # check if there is gpu available, if there is, use it
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print("running calculations on: ", device)
-    # create our model and send it to the device (cpu/gpu)
-    vae = VAE.Vae(x_dim=VAE.X_DIM, in_channels=VAE.INPUT_CHANNELS, z_dim=VAE.Z_DIM).to(device)
+def train(dataset_name, dataloader, vae, loss_type, beta, device, train_results, perceptual_loss_network):
+
     # optimizer & scheduler
     vae_optim = torch.optim.Adam(params=vae.parameters(), lr=LEARNING_RATE)
     vae_sched = torch.optim.lr_scheduler.MultiStepLR(vae_optim, milestones=[100, 150], gamma=0.1)
@@ -60,7 +93,6 @@ def train(dataset_name, dataloader, loss_type, beta, train_results, perceptual_l
             vae_optim.zero_grad()
             loss.backward()
             vae_optim.step()
-            vae_sched.step()
             # save loss
             batch_recon_errors.append(recon_error.data.cpu().item())
             batch_kl_errors.append(kl.data.cpu().item())
@@ -68,6 +100,10 @@ def train(dataset_name, dataloader, loss_type, beta, train_results, perceptual_l
         train_results.recon_errors.append(np.mean(batch_recon_errors))
         train_results.kl_errors.append(np.mean(batch_kl_errors))
         train_results.losses.append(np.mean(batch_losses))
+        # MultiStepLR
+        vae_sched.step()
+        if loss_type == "momentum_perceptual":
+            perceptual_loss_network.update_target_weights(vae.encoder)
         print("epoch: {} training loss: {:.5f} epoch time: {:.3f} sec".format(epoch, train_results.losses[-1],
                                                                               time.time() - epoch_start_time))
         # saving our model (so we don't have to train it again...)
@@ -77,21 +113,21 @@ def train(dataset_name, dataloader, loss_type, beta, train_results, perceptual_l
         print("saved checkpoint @", fname)
 
 
-def create_plot(y_vals, save_path, ylabel, title):
-    x = range(1, NUM_EPOCHS + 1)
-    plt.figure(figsize=(10, 10))
-    plt.plot(x, y_vals)
-    plt.xlabel('Epoch')
-    plt.ylabel(ylabel)
-    plt.title(title)
-    plt.savefig(save_path)
-    plt.clf()
+# def create_plot(y_vals, save_path, ylabel, title):
+#     x = range(1, NUM_EPOCHS + 1)
+#     plt.figure(figsize=(10, 10))
+#     plt.plot(x, y_vals)
+#     plt.xlabel('Epoch')
+#     plt.ylabel(ylabel)
+#     plt.title(title)
+#     plt.savefig(save_path)
+#     plt.clf()
 
 
-def get_plot_params(results_directory, vae_loss_type, beta, ylabel):
-    save_path = results_directory / vae_loss_type / (ylabel + "_beta_" + str(beta) + '.png')
-    title = save_path.stem
-    return save_path, title
+# def get_plot_params(results_directory, vae_loss_type, beta, ylabel):
+#     save_path = results_directory / vae_loss_type / (ylabel + "_beta_" + str(beta) + '.png')
+#     title = save_path.stem
+#     return save_path, title
 
 
 def main():
@@ -117,21 +153,33 @@ def main():
     kl_y_label = "KL_error"
     loss_y_label = "Loss"
     # here we go
-    loss_types = ["mse", "perceptual"]
-    # loss_types = ["perceptual"]
+    loss_types = ["mse", "vgg_perceptual", "momentum_perceptual"]
     perceptual_loss_network = None
     for loss_type in loss_types:
         print("loss type: ", loss_type)
         if loss_type == "mse":
             BETAS = VAE.MSE_BETAS
-        else:
-            perceptual_loss_network = PerceptualLossNetwork.PerceptualLossNetwork()
+        elif loss_type == "vgg_perceptual":
+            perceptual_loss_network = VggPerceptualLossNetwork.VggPerceptualLossNetwork()
             perceptual_loss_network.eval()
-            BETAS = VAE.PERCEPTUAL_BETAS
+            # perceptual_loss_network = VggPerceptualLossNetworkTalVersion.VGGDistance(device=device)
+            BETAS = VAE.VGG_PERCEPTUAL_BETAS
+        else:
+            BETAS = VAE.MOMENTUM_PERCEPTUAL_BETAS
+
         for beta in BETAS:
+            # check if there is gpu available, if there is, use it
+            device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            print("running calculations on: ", device)
+            # create our model and send it to the device (cpu/gpu)
+            vae = VAE.Vae(x_dim=VAE.X_DIM, in_channels=VAE.INPUT_CHANNELS, z_dim=VAE.Z_DIM).to(device)
+
+            if loss_type == "momentum_perceptual":
+                perceptual_loss_network = MomentumEncoder.MomentumEncoder(vae.encoder, 0.99, [1, 3, 5, 7])
+                perceptual_loss_network.encoder.eval()
             train_results = TrainResults()
-            train(dataset_name, sample_dataloader, loss_type, beta, train_results,perceptual_loss_network)
-            train_results.plot_results(results_directory, loss_type, beta, recon_y_label, kl_y_label, loss_y_label)
+            train(dataset_name, sample_dataloader, vae, loss_type, beta, device, train_results, perceptual_loss_network)
+            train_results.plot_results(results_directory, loss_type, beta, recon_y_label, kl_y_label, loss_y_label, dataset_name)
 
 
 if __name__ == '__main__':
