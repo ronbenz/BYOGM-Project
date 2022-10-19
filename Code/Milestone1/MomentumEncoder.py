@@ -1,12 +1,13 @@
 import copy
 
-import VAE
+import VAE_training
 import torch
 import torch.nn as nn
 import torchvision.models as models
 import torch.nn.functional as F
 
-class MomentumEncoder():
+
+class MomentumEncoder:
     def __init__(self, online, weights_factor, sample_indices):
         self.encoder = copy.deepcopy(online)
         self.weights_factor = weights_factor
@@ -27,12 +28,13 @@ class MomentumEncoder():
                 feature_maps.append(x)
         return feature_maps
 
-    def calc_loss(self, input, target):
-        input_features = self.extract_feature_maps(input)
-        target_features = self.extract_feature_maps(target)
-        loss = F.mse_loss(input, target)
-        for input_feature, target_feature in zip(input_features, target_features):
-            loss += F.mse_loss(input_feature, target_feature, reduction='sum')
+    def calc_loss(self, input, target, epoch):
+        loss = F.mse_loss(input, target, reduction='sum')
+        if epoch >= VAE_training.NUM_WARMUP_EPOCHS:
+            input_features = self.extract_feature_maps(input)
+            target_features = self.extract_feature_maps(target)
+            for input_feature, target_feature in zip(input_features, target_features):
+                loss += F.mse_loss(input_feature, target_feature, reduction='sum')
         return loss
 
 

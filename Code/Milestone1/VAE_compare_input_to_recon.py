@@ -55,10 +55,10 @@ def main():
 
     sample_dataloader = DataLoader(test_data, batch_size=n_samples, shuffle=True, drop_last=True)
     samples, labels = next(iter(sample_dataloader))
-    #plot_samples_and_recons(vae, dataset_type, n_samples, samples, "mse", weights_directory, results_directory)
+    plot_samples_and_recons(vae, dataset_type, n_samples, samples, "mse", weights_directory, results_directory)
     plot_samples_and_recons(vae, dataset_type, n_samples, samples, "vgg_perceptual", weights_directory,
                             results_directory)
-    #plot_samples_and_recons(vae, dataset_type, n_samples, samples, "momentum", weights_directory, results_directory)
+    plot_samples_and_recons(vae, dataset_type, n_samples, samples, "momentum_perceptual", weights_directory, results_directory)
 
 
 if __name__ == '__main__':

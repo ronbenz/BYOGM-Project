@@ -16,6 +16,7 @@ import scipy
 BATCH_SIZE = 128  # usually 32/64/128/256
 LEARNING_RATE = 2e-4  # for the gradient optimizer
 NUM_EPOCHS = 200  # how many epochs to run?
+NUM_WARMUP_EPOCHS = 100
 # NUM_EPOCHS = 1
 
 
@@ -25,12 +26,12 @@ class TrainResults:
         self.kl_errors = []
         self.losses = []
 
-    def get_plot_params(self, results_directory, vae_loss_type, beta, dataset_name):
-        save_path = results_directory / vae_loss_type / (dataset_name + "_beta_" + str(beta) + '.png')
+    def get_file_params(self, results_directory, vae_loss_type, beta, dataset_name, suffix):
+        save_path = results_directory / vae_loss_type / (dataset_name + "_beta_" + str(beta) + suffix)
         title = save_path.stem
         return save_path, title
 
-    def create_plot(self, save_path,recon_y_label, kl_y_label, loss_y_label, title):
+    def create_plot(self, save_path, recon_y_label, kl_y_label, loss_y_label, title):
         fig = plt.figure(figsize=(32, 16))
         fig.suptitle(title, fontsize=40)
         x = range(1, NUM_EPOCHS + 1)
@@ -55,19 +56,19 @@ class TrainResults:
 
         fig.savefig(save_path)
 
+    def create_loss_trace(self, file_path):
+        loss_trace_str = ""
+        for epoch, loss in enumerate(self.losses):
+            loss_trace_str += f"#epoch:{epoch} ,loss:{loss:.2f} \n"
+        with open(file_path, 'w') as file:
+            file.write(loss_trace_str)
+
     def plot_results(self, results_directory, vae_loss_type, beta, recon_y_label, kl_y_label, loss_y_label, dataset_name):
         # prepare plots params
-
-        save_path, title = self.get_plot_params(results_directory, vae_loss_type, beta, dataset_name)
-        self.create_plot(save_path, recon_y_label, kl_y_label, loss_y_label, title)
-
-        # recon_save_path, recon_title = get_plot_params(results_directory, vae_loss_type, beta, recon_y_label)
-        # kl_save_path, kl_title = get_plot_params(results_directory, vae_loss_type, beta, kl_y_label)
-        # loss_save_path, loss_title = get_plot_params(results_directory, vae_loss_type, beta, loss_y_label)
-        # create plots
-        # create_plot(self.recon_errors, recon_save_path, recon_y_label, recon_title)
-        # create_plot(self.kl_errors, kl_save_path, kl_y_label, kl_title)
-        # create_plot(self.losses, loss_save_path, loss_y_label, loss_title)
+        plot_save_path, plot_title = self.get_file_params(results_directory, vae_loss_type, beta, dataset_name, '.png')
+        loss_trace_save_path, _ = self.get_file_params(results_directory, vae_loss_type, beta, dataset_name, '.txt')
+        self.create_plot(plot_save_path, recon_y_label, kl_y_label, loss_y_label, plot_title)
+        self.create_loss_trace(loss_trace_save_path)
 
 
 def train(dataset_name, dataloader, vae, loss_type, beta, device, train_results, perceptual_loss_network):
@@ -82,13 +83,14 @@ def train(dataset_name, dataloader, vae, loss_type, beta, device, train_results,
         batch_recon_errors = []
         batch_kl_errors = []
         batch_losses = []
+
         for batch_i, batch in enumerate(dataloader):
             # print("batch #", batch_i)
             # forward pass
             x = batch[0].to(device).view(-1, 3, VAE.X_DIM, VAE.X_DIM)
             x_recon, mu, logvar = vae.forward(x)
             # calculate the loss
-            recon_error, kl, loss = vae.loss_function(x_recon, x, mu, logvar, beta, loss_type, perceptual_loss_network)
+            recon_error, kl, loss = vae.loss_function(x_recon, x, mu, logvar, beta, loss_type, perceptual_loss_network, epoch)
             # optimization (same 3 steps everytime)
             vae_optim.zero_grad()
             loss.backward()
@@ -104,6 +106,7 @@ def train(dataset_name, dataloader, vae, loss_type, beta, device, train_results,
         vae_sched.step()
         if loss_type == "momentum_perceptual":
             perceptual_loss_network.update_target_weights(vae.encoder)
+
         print("epoch: {} training loss: {:.5f} epoch time: {:.3f} sec".format(epoch, train_results.losses[-1],
                                                                               time.time() - epoch_start_time))
         # saving our model (so we don't have to train it again...)
@@ -111,23 +114,6 @@ def train(dataset_name, dataloader, vae, loss_type, beta, device, train_results,
         fname = "./VAE_training_checkpoints/" + loss_type + "/vae_" + dataset_name + "_beta_" + str(beta) + ".pth"
         torch.save(vae.state_dict(), fname)
         print("saved checkpoint @", fname)
-
-
-# def create_plot(y_vals, save_path, ylabel, title):
-#     x = range(1, NUM_EPOCHS + 1)
-#     plt.figure(figsize=(10, 10))
-#     plt.plot(x, y_vals)
-#     plt.xlabel('Epoch')
-#     plt.ylabel(ylabel)
-#     plt.title(title)
-#     plt.savefig(save_path)
-#     plt.clf()
-
-
-# def get_plot_params(results_directory, vae_loss_type, beta, ylabel):
-#     save_path = results_directory / vae_loss_type / (ylabel + "_beta_" + str(beta) + '.png')
-#     title = save_path.stem
-#     return save_path, title
 
 
 def main():
@@ -153,7 +139,8 @@ def main():
     kl_y_label = "KL_error"
     loss_y_label = "Loss"
     # here we go
-    loss_types = ["mse", "vgg_perceptual", "momentum_perceptual"]
+    #loss_types = ["momentum_perceptual", "vgg_perceptual", "mse"]
+    loss_types = ["momentum_perceptual"]
     perceptual_loss_network = None
     for loss_type in loss_types:
         print("loss type: ", loss_type)
@@ -170,6 +157,7 @@ def main():
         for beta in BETAS:
             # check if there is gpu available, if there is, use it
             device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            #device = torch.device("cpu")
             print("running calculations on: ", device)
             # create our model and send it to the device (cpu/gpu)
             vae = VAE.Vae(x_dim=VAE.X_DIM, in_channels=VAE.INPUT_CHANNELS, z_dim=VAE.Z_DIM).to(device)

@@ -39,9 +39,9 @@ def main():
     vae = VAE.Vae(x_dim=VAE.X_DIM, in_channels=VAE.INPUT_CHANNELS, z_dim=VAE.Z_DIM)
     vae.eval()
     n_samples = 5
-    #gen_new_data(vae, dataset_type, n_samples, "mse", weights_directory, results_directory)
+    gen_new_data(vae, dataset_type, n_samples, "mse", weights_directory, results_directory)
     gen_new_data(vae, dataset_type, n_samples, "vgg_perceptual", weights_directory, results_directory)
-    #gen_new_data(vae, dataset_type, n_samples, "momentum", weights_directory, results_directory)
+    gen_new_data(vae, dataset_type, n_samples, "momentum_perceptual", weights_directory, results_directory)
 
 
 if __name__ == '__main__':
