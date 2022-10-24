@@ -13,10 +13,10 @@ import scipy
 
 
 # define hyper-parameters
-BATCH_SIZE = 128  # usually 32/64/128/256
+BATCH_SIZE = 128
 LEARNING_RATE = 2e-4  # for the gradient optimizer
-NUM_EPOCHS = 200  # how many epochs to run?
-NUM_WARMUP_EPOCHS = 100
+NUM_WARMUP_EPOCHS = 200
+NUM_EPOCHS = 200
 # NUM_EPOCHS = 1
 
 
@@ -59,7 +59,7 @@ class TrainResults:
     def create_loss_trace(self, file_path):
         loss_trace_str = ""
         for epoch, loss in enumerate(self.losses):
-            loss_trace_str += f"#epoch:{epoch} ,loss:{loss:.2f} \n"
+            loss_trace_str += f"#epoch:{epoch+1} ,loss:{loss:.2f}\n"
         with open(file_path, 'w') as file:
             file.write(loss_trace_str)
 
@@ -71,14 +71,17 @@ class TrainResults:
         self.create_loss_trace(loss_trace_save_path)
 
 
-def train(dataset_name, dataloader, vae, loss_type, beta, device, train_results, perceptual_loss_network):
+def train(dataset_name, dataloader, vae, loss_type, num_of_epochs, beta, device, train_results, perceptual_loss_network, use_pretraining_weights=False):
+
+    if use_pretraining_weights:
+        initialize_weights(vae, perceptual_loss_network, loss_type, dataset_name)
 
     # optimizer & scheduler
     vae_optim = torch.optim.Adam(params=vae.parameters(), lr=LEARNING_RATE)
-    vae_sched = torch.optim.lr_scheduler.MultiStepLR(vae_optim, milestones=[100, 150], gamma=0.1)
+    vae_sched = torch.optim.lr_scheduler.MultiStepLR(vae_optim, milestones=[num_of_epochs*0.5, num_of_epochs*0.75], gamma=0.1)
     # save the losses from each epoch, we might want to plot it later
-    for epoch in range(NUM_EPOCHS):
-        print("epoch #", epoch)
+    for epoch in range(num_of_epochs):
+        print(f"epoch #{epoch+1}")
         epoch_start_time = time.time()
         batch_recon_errors = []
         batch_kl_errors = []
@@ -90,7 +93,7 @@ def train(dataset_name, dataloader, vae, loss_type, beta, device, train_results,
             x = batch[0].to(device).view(-1, 3, VAE.X_DIM, VAE.X_DIM)
             x_recon, mu, logvar = vae.forward(x)
             # calculate the loss
-            recon_error, kl, loss = vae.loss_function(x_recon, x, mu, logvar, beta, loss_type, perceptual_loss_network, epoch)
+            recon_error, kl, loss = vae.loss_function(x_recon, x, mu, logvar, beta, loss_type, perceptual_loss_network)
             # optimization (same 3 steps everytime)
             vae_optim.zero_grad()
             loss.backward()
@@ -107,13 +110,23 @@ def train(dataset_name, dataloader, vae, loss_type, beta, device, train_results,
         if loss_type == "momentum_perceptual":
             perceptual_loss_network.update_target_weights(vae.encoder)
 
-        print("epoch: {} training loss: {:.5f} epoch time: {:.3f} sec".format(epoch, train_results.losses[-1],
+        print("epoch:{} training loss: {:.5f} epoch time: {:.3f} sec".format(epoch+1, train_results.losses[-1],
                                                                               time.time() - epoch_start_time))
-        # saving our model (so we don't have to train it again...)
+    #saving our model (so we don't have to train it again...)
+    vae_fname = "./VAE_training_checkpoints/" + loss_type + "/vae_" + dataset_name + "_beta_" + str(beta) + ".pth"
+    torch.save(vae.state_dict(), vae_fname)
+    print("saved checkpoint @", vae_fname)
+    #momentum_encoder_fname = "./VAE_training_checkpoints/" + loss_type + "/momentum_encoder_" + dataset_name + "_beta_" + str(beta) + ".pth"
+    #torch.save(perceptual_loss_network.encoder.state_dict(), momentum_encoder_fname)
+    #print("saved checkpoint @", momentum_encoder_fname)
 
-        fname = "./VAE_training_checkpoints/" + loss_type + "/vae_" + dataset_name + "_beta_" + str(beta) + ".pth"
-        torch.save(vae.state_dict(), fname)
-        print("saved checkpoint @", fname)
+
+def initialize_weights(vae, perceptual_loss_network, loss_type,dataset_name):
+    vae_f_name = f"./VAE_training_checkpoints/starting_weights/{loss_type}/vae_mse_beta_0.1_" + dataset_name + ".pth"
+    vae.load_state_dict(torch.load(vae_f_name))
+    if loss_type == 'momentum_perceptual':
+        momentum_encoder_f_name = f"./VAE_training_checkpoints/starting_weights/{loss_type}/momentum_encoder_mse_beta_0.1_" + dataset_name + ".pth"
+        perceptual_loss_network.encoder.load_state_dict(torch.load(momentum_encoder_f_name))
 
 
 def main():
@@ -125,13 +138,19 @@ def main():
     # define pre-procesing transformation to use
     # dataset_name = "cifar10"
     dataset_name = "svhn"
+    # dataset_name = "flowers"
     transform = torchvision.transforms.ToTensor()
+
     if dataset_name == "cifar10":
         train_data = torchvision.datasets.CIFAR10('./datasets/', train=True, transform=transform,
                                                   target_transform=None, download=True)
-    else:
+    elif dataset_name == "svhn":
         train_data = torchvision.datasets.SVHN('./datasets/', split="train", transform=transform,
                                                target_transform=None, download=True)
+    else:
+        resize_transform = torchvision.transforms.Compose([transform, torchvision.transforms.Resize((VAE.X_DIM, VAE.X_DIM), interpolation=torchvision.transforms.InterpolationMode.BICUBIC)])
+        train_data = torchvision.datasets.Flowers102('./datasets/', split="train", transform=resize_transform,
+                                                     target_transform=None, download=True)
 
     sample_dataloader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
     results_directory = pathlib.Path("/home/user_115/Project/Results/Milestone1/VAE_training_plots/")
@@ -149,6 +168,7 @@ def main():
         elif loss_type == "vgg_perceptual":
             perceptual_loss_network = VggPerceptualLossNetwork.VggPerceptualLossNetwork()
             perceptual_loss_network.eval()
+            perceptual_loss_network.requires_grad_(False)
             # perceptual_loss_network = VggPerceptualLossNetworkTalVersion.VGGDistance(device=device)
             BETAS = VAE.VGG_PERCEPTUAL_BETAS
         else:
@@ -165,8 +185,9 @@ def main():
             if loss_type == "momentum_perceptual":
                 perceptual_loss_network = MomentumEncoder.MomentumEncoder(vae.encoder, 0.99, [1, 3, 5, 7])
                 perceptual_loss_network.encoder.eval()
+                perceptual_loss_network.encoder.requires_grad_(False)
             train_results = TrainResults()
-            train(dataset_name, sample_dataloader, vae, loss_type, beta, device, train_results, perceptual_loss_network)
+            train(dataset_name, sample_dataloader, vae, loss_type, NUM_EPOCHS, beta, device, train_results, perceptual_loss_network,  use_pretraining_weights=True)
             train_results.plot_results(results_directory, loss_type, beta, recon_y_label, kl_y_label, loss_y_label, dataset_name)
 
 

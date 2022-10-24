@@ -28,13 +28,12 @@ class MomentumEncoder:
                 feature_maps.append(x)
         return feature_maps
 
-    def calc_loss(self, input, target, epoch):
+    def calc_loss(self, input, target):
         loss = F.mse_loss(input, target, reduction='sum')
-        if epoch >= VAE_training.NUM_WARMUP_EPOCHS:
-            input_features = self.extract_feature_maps(input)
-            target_features = self.extract_feature_maps(target)
-            for input_feature, target_feature in zip(input_features, target_features):
-                loss += F.mse_loss(input_feature, target_feature, reduction='sum')
+        input_features = self.extract_feature_maps(input)
+        target_features = self.extract_feature_maps(target)
+        for input_feature, target_feature in zip(input_features, target_features):
+            loss += F.mse_loss(input_feature, target_feature, reduction='sum')
         return loss
 
 

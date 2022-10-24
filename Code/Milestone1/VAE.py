@@ -8,13 +8,14 @@ HIDDEN_DIMS = [64, 128, 256, 512]  # size of the hidden layers outputs in the ne
 INPUT_CHANNELS = 3
 X_DIM = 32  # size of the input dimension
 Z_DIM = 128  # size of the latent dimension
-#MOMENTUM_PERCEPTUAL_BETAS = [1e-3, 1e-2, 1e-1, 1, 30, 40, 50]
 MOMENTUM_PERCEPTUAL_BETAS = [1e-3, 1e-2, 1e-1, 1]
+#MOMENTUM_PERCEPTUAL_BETAS = [10, 100, 1000]
 VGG_PERCEPTUAL_BETAS = [1, 30, 40, 50]
 #VGG_PERCEPTUAL_BETAS = [50]
 MSE_BETAS = [1e-3, 1e-2, 1e-1, 1]
 #MSE_BETAS = []
 WARMUP_BETA = 1e-1
+
 
 class VaeEncoder(torch.nn.Module):
     def __init__(self, in_channels, z_dim):
@@ -110,7 +111,7 @@ class Vae(torch.nn.Module):
         z, mu, log_var = self.encode(input)
         return self.decode(z), mu, log_var
 
-    def loss_function(self, recon_x, x, mu, logvar, beta, loss_type, perceptual_loss_network, epoch):
+    def loss_function(self, recon_x, x, mu, logvar, beta, loss_type, perceptual_loss_network):
         """
         This function calculates the loss of the VAE.
         loss = reconstruction_loss - 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
@@ -131,9 +132,7 @@ class Vae(torch.nn.Module):
             recon_error = perceptual_loss_network.calc_loss(recon_x, x)
             # recon_error = perceptual_loss_network(recon_x,x, reduction='sum')
         elif loss_type == 'momentum_perceptual':
-            recon_error = perceptual_loss_network.calc_loss(recon_x, x, epoch)
-            if epoch < VAE_training.NUM_WARMUP_EPOCHS:
-                beta = WARMUP_BETA
+            recon_error = perceptual_loss_network.calc_loss(recon_x, x)
         else:
             raise NotImplementedError
 

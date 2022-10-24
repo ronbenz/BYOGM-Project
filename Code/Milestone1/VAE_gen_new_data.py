@@ -19,7 +19,7 @@ def gen_new_data(vae, dataset_type, n_samples, vae_loss_type, weights_directory,
     for i in range(len(BETAS)):
         # load checkpoint
         fname = weights_directory / vae_loss_type / ('vae_' + dataset_type + f'_beta_{BETAS[i]}.pth')
-        vae.load_state_dict(torch.load(fname))
+        vae.load_state_dict(torch.load(fname, map_location="cpu"))
         # sample from the vae
         vae_samples = vae.sample(num_samples=n_samples).data.numpy()
         for sample_idx in range(vae_samples.shape[0]):
@@ -39,8 +39,8 @@ def main():
     vae = VAE.Vae(x_dim=VAE.X_DIM, in_channels=VAE.INPUT_CHANNELS, z_dim=VAE.Z_DIM)
     vae.eval()
     n_samples = 5
-    gen_new_data(vae, dataset_type, n_samples, "mse", weights_directory, results_directory)
-    gen_new_data(vae, dataset_type, n_samples, "vgg_perceptual", weights_directory, results_directory)
+    # gen_new_data(vae, dataset_type, n_samples, "mse", weights_directory, results_directory)
+    # gen_new_data(vae, dataset_type, n_samples, "vgg_perceptual", weights_directory, results_directory)
     gen_new_data(vae, dataset_type, n_samples, "momentum_perceptual", weights_directory, results_directory)
 
 
