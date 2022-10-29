@@ -176,15 +176,15 @@ def main():
 
         for beta in BETAS:
             # check if there is gpu available, if there is, use it
-            device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-            #device = torch.device("cpu")
+            #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            device = torch.device("cpu")
             print("running calculations on: ", device)
             # create our model and send it to the device (cpu/gpu)
             vae = VAE.Vae(x_dim=VAE.X_DIM, in_channels=VAE.INPUT_CHANNELS, z_dim=VAE.Z_DIM).to(device)
 
             if loss_type == "momentum_perceptual":
                 #perceptual_loss_network = MomentumEncoder.MomentumEncoder(vae.encoder, 0.99, [1, 3, 5, 7])
-                perceptual_loss_network = MomentumEncoder.MomentumEncoder(vae.encoder, 0.99, [0])
+                perceptual_loss_network = MomentumEncoder.MomentumEncoder(vae.encoder, 0.99, [0, 1])
                 perceptual_loss_network.encoder.eval()
                 perceptual_loss_network.encoder.requires_grad_(False)
             train_results = TrainResults()

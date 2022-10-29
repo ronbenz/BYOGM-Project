@@ -8,7 +8,8 @@ HIDDEN_DIMS = [64, 128, 256, 512]  # size of the hidden layers outputs in the ne
 INPUT_CHANNELS = 3
 X_DIM = 32  # size of the input dimension
 Z_DIM = 128  # size of the latent dimension
-MOMENTUM_PERCEPTUAL_BETAS = [1e-3, 1e-2, 1e-1, 1, 10, 100, 1000]
+# MOMENTUM_PERCEPTUAL_BETAS = [1e-3, 1e-2, 1e-1, 1, 10, 100, 1000]
+MOMENTUM_PERCEPTUAL_BETAS = [1e-3, 1e-2, 1e-1, 1]
 # MOMENTUM_PERCEPTUAL_BETAS = [10, 100, 1000]
 VGG_PERCEPTUAL_BETAS = [1, 30, 40, 50]
 # VGG_PERCEPTUAL_BETAS = [50]
@@ -39,6 +40,42 @@ class VaeEncoder(torch.nn.Module):
         self.fc_mu = nn.Linear(hidden_dims[-1] * 4, z_dim)  # fully-connected to output mu
         self.fc_var = nn.Linear(hidden_dims[-1] * 4, z_dim)  # fully-connected to output logvar
 
+    ############# DEBUG version for adding support for deeper decoder ############# TODO:delete this code after showing Ron
+    # def __init__(self, in_channels, z_dim):
+    #     super(VaeEncoder, self).__init__()
+    #     hidden_dims = [64, 64, 128, 128, 256, 256, 512, 512]
+    #     modules = []
+    #     for idx, h_dim in enumerate(hidden_dims):
+    #         if (idx % 2) == 0:
+    #             stride = 2
+    #         else:
+    #             stride = 1
+    #         modules.append(
+    #             nn.Sequential(
+    #                 nn.Conv2d(in_channels, out_channels=h_dim, kernel_size=3, stride=stride, padding=1),
+    #                 nn.BatchNorm2d(h_dim),
+    #                 nn.LeakyReLU())
+    #         )
+    #         in_channels = h_dim
+    #         if idx == 0:
+    #             self.debug_layer0_output = nn.Sequential(*modules)
+    #         elif idx == 1:
+    #             self.debug_layer1_output = nn.Sequential(*modules)
+    #         elif idx == 2:
+    #             self.debug_layer2_output = nn.Sequential(*modules)
+    #         elif idx == 3:
+    #             self.debug_layer3_output = nn.Sequential(*modules)
+    #         elif idx == 4:
+    #             self.debug_layer4_output = nn.Sequential(*modules)
+    #         elif idx == 5:
+    #             self.debug_layer5_output = nn.Sequential(*modules)
+    #         elif idx == 6:
+    #             self.debug_layer6_output = nn.Sequential(*modules)
+    #
+    #     self.layers = nn.Sequential(*modules)
+    #     self.fc_mu = nn.Linear(hidden_dims[-1] * 4, z_dim)  # fully-connected to output mu
+    #     self.fc_var = nn.Linear(hidden_dims[-1] * 4, z_dim)  # fully-connected to output logvar
+
     def reparameterize(self, mu, logvar):
         """
         Will a single z be enough ti compute the expectation
@@ -53,19 +90,99 @@ class VaeEncoder(torch.nn.Module):
 
     def forward(self, input):
         features = self.layers(input)
-        features = torch.flatten(features,
-                                 start_dim=1)  # concatenating (channels, width, height) to vector of size channels*width*height
+        features = torch.flatten(features, start_dim=1)  # concatenating (channels, width, height) to vector of size channels*width*height
         mu = self.fc_mu(features)
         log_var = self.fc_var(features)
         z = self.reparameterize(mu, log_var)
         return z, mu, log_var
 
+    ############# DEBUG version for adding support for deeper decoder ############# TODO:delete this code after showing Ron
+    # def forward(self, input):
+    #     print(f"DEBUG Encoder: layer0 output size:{self.debug_layer0_output(input).size()}")
+    #     print(f"DEBUG Encoder: layer1 output size:{self.debug_layer1_output(input).size()}")
+    #     print(f"DEBUG Encoder: layer2 output size:{self.debug_layer2_output(input).size()}")
+    #     print(f"DEBUG Encoder: layer3 output size:{self.debug_layer3_output(input).size()}")
+    #     print(f"DEBUG Encoder: layer4 output size:{self.debug_layer4_output(input).size()}")
+    #     print(f"DEBUG Encoder: layer5 output size:{self.debug_layer5_output(input).size()}")
+    #     print(f"DEBUG Encoder: layer6 output size:{self.debug_layer6_output(input).size()}")
+    #     features = self.layers(input)
+    #     features = torch.flatten(features,
+    #                              start_dim=1)  # concatenating (channels, width, height) to vector of size channels*width*height
+    #     mu = self.fc_mu(features)
+    #     log_var = self.fc_var(features)
+    #     z = self.reparameterize(mu, log_var)
+    #     return z, mu, log_var
+
 
 class VaeDecoder(torch.nn.Module):
+    ############# Deep Decoder version #############
+
+    # def __init__(self, z_dim): #TODO: remove debug variables and prints after showing Ron
+    #     super(VaeDecoder, self).__init__()
+    #     hidden_dims = [512, 512, 256, 256, 128, 128, 64, 64]
+    #     modules = []
+    #     self.first_layer = nn.Linear(z_dim, hidden_dims[0] * 4)
+    #     for i in range(len(hidden_dims) - 1):
+    #         if (i % 2) == 0:
+    #             stride = 2
+    #             output_padding = 1
+    #         else:
+    #             stride = 1
+    #             output_padding = 0
+    #         modules.append(
+    #             nn.Sequential(
+    #                 nn.ConvTranspose2d(hidden_dims[i], hidden_dims[i + 1], kernel_size=3, stride=stride, padding=1,
+    #                                    output_padding=output_padding),
+    #                 nn.BatchNorm2d(hidden_dims[i + 1]),
+    #                 nn.LeakyReLU())
+    #         )
+    #         if i == 0:
+    #             self.debug_layer0_output = nn.Sequential(*modules)
+    #         elif i == 1:
+    #             self.debug_layer1_output = nn.Sequential(*modules)
+    #         elif i == 2:
+    #             self.debug_layer2_output = nn.Sequential(*modules)
+    #         elif i == 3:
+    #             self.debug_layer3_output = nn.Sequential(*modules)
+    #         elif i == 4:
+    #             self.debug_layer4_output = nn.Sequential(*modules)
+    #         elif i == 5:
+    #             self.debug_layer5_output = nn.Sequential(*modules)
+    #         elif i == 6:
+    #             self.debug_layer6_output = nn.Sequential(*modules)
+    #
+    #     self.debug_layers = nn.Sequential(*modules)
+    #     modules.append(
+    #         nn.Sequential(
+    #             nn.ConvTranspose2d(hidden_dims[-1], hidden_dims[-1], kernel_size=3, stride=1, padding=1,
+    #                                output_padding=0),
+    #             nn.BatchNorm2d(hidden_dims[-1]),
+    #             nn.LeakyReLU(),
+    #             nn.Conv2d(hidden_dims[-1], out_channels=3, kernel_size=3, padding=1),
+    #             nn.Sigmoid()))
+    #     self.layers = nn.Sequential(*modules)
+    #
+    # def forward(self, z):
+    #     print(f"DEBUG: z size:{z.size()}")
+    #     result = self.first_layer(z)
+    #     print(f"DEBUG: first decoder layer output size:{result.size()}")
+    #     result_debug = result.view(-1, 512, 2, 2)
+    #     result = result.view(-1, 512, 2, 2)
+    #     result = self.layers(result)
+    #     print(f"DEBUG Decoder: layer0 output size:{self.debug_layer0_output(result_debug).size()}")
+    #     print(f"DEBUG Decoder: layer1 output size:{self.debug_layer1_output(result_debug).size()}")
+    #     print(f"DEBUG Decoder: layer2 output size:{self.debug_layer2_output(result_debug).size()}")
+    #     print(f"DEBUG Decoder: layer3 output size:{self.debug_layer3_output(result_debug).size()}")
+    #     print(f"DEBUG Decoder: layer4 output size:{self.debug_layer4_output(result_debug).size()}")
+    #     print(f"DEBUG Decoder: layer5 output size:{self.debug_layer5_output(result_debug).size()}")
+    #     print(f"DEBUG Decoder: layer6 output size:{self.debug_layer6_output(result_debug).size()}")
+    #     print(f"DEBUG Decoder:  layer6 output size:{result.size()}")
+    #     return result
+
+    ############# Regular Decoder version #############
     def __init__(self, z_dim):
         super(VaeDecoder, self).__init__()
         hidden_dims = [512, 256, 128, 64]
-        # hidden_dims = [512, 512, 256, 256, 128, 128, 64, 64]
         modules = []
         self.first_layer = nn.Linear(z_dim, hidden_dims[0] * 4)
         for i in range(len(hidden_dims) - 1):

@@ -4,10 +4,6 @@ import torchvision
 import torch
 import matplotlib.pyplot as plt
 import pathlib
-from ignite.engine import *
-from ignite.metrics import *
-# import ignite.metrics as metrics
-# import ignite.engine as engine
 from torch.utils.data import DataLoader
 #from metrics.fid_score import calc_fid_from_dataset_generate
 from Code.Milestone1.metrics.fid_score import calc_fid_from_dataset_generate
