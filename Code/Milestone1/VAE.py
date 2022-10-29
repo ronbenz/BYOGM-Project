@@ -8,12 +8,12 @@ HIDDEN_DIMS = [64, 128, 256, 512]  # size of the hidden layers outputs in the ne
 INPUT_CHANNELS = 3
 X_DIM = 32  # size of the input dimension
 Z_DIM = 128  # size of the latent dimension
-MOMENTUM_PERCEPTUAL_BETAS = [1e-3, 1e-2, 1e-1, 1]
-#MOMENTUM_PERCEPTUAL_BETAS = [10, 100, 1000]
+MOMENTUM_PERCEPTUAL_BETAS = [1e-3, 1e-2, 1e-1, 1, 10, 100, 1000]
+# MOMENTUM_PERCEPTUAL_BETAS = [10, 100, 1000]
 VGG_PERCEPTUAL_BETAS = [1, 30, 40, 50]
-#VGG_PERCEPTUAL_BETAS = [50]
+# VGG_PERCEPTUAL_BETAS = [50]
 MSE_BETAS = [1e-3, 1e-2, 1e-1, 1]
-#MSE_BETAS = []
+# MSE_BETAS = []
 WARMUP_BETA = 1e-1
 
 
@@ -150,3 +150,12 @@ class Vae(torch.nn.Module):
         """
         z = torch.randn(num_samples, self.z_dim)
         return self.decode(z)
+
+
+def get_betas_by_loss_type(vae_loss_type):
+    if vae_loss_type == "mse":
+        return MSE_BETAS
+    elif vae_loss_type == "vgg_perceptual":
+        return VGG_PERCEPTUAL_BETAS
+    else:
+        return MOMENTUM_PERCEPTUAL_BETAS

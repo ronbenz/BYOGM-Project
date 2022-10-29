@@ -8,10 +8,10 @@ import torch.nn.functional as F
 
 
 class MomentumEncoder:
-    def __init__(self, online, weights_factor, sample_indices):
+    def __init__(self, online, weights_factor, feature_maps_indices):
         self.encoder = copy.deepcopy(online)
         self.weights_factor = weights_factor
-        self.sample_indices = sample_indices
+        self.feature_maps_indices = feature_maps_indices
 
     def update_target_weights(self, online_model):
         target_model = self.encoder
@@ -24,7 +24,7 @@ class MomentumEncoder:
 
         for idx, module in self.encoder.layers._modules.items():
             x = module(x)
-            if int(idx) in self.sample_indices:
+            if int(idx) in self.feature_maps_indices:
                 feature_maps.append(x)
         return feature_maps
 
