@@ -32,9 +32,9 @@ def calc_fid(vae, dataset_type, vae_loss_type, weights_directory, results_direct
         dataloader = DataLoader(test_data, batch_size=VAE_training.BATCH_SIZE, drop_last=True)
         fid = calc_fid_from_dataset_generate(dataloader, vae, VAE_training.BATCH_SIZE, cuda=True, dims=2048, device=device, num_images=50000)
         fid_results += f"beta:{beta} , fid:{fid}\n"
-        save_path = results_directory / vae_loss_type / (dataset_type + "FID.txt")
-        with open(save_path, 'w') as file:
-            file.write(fid_results)
+    save_path = results_directory / vae_loss_type / (dataset_type + "FID.txt")
+    with open(save_path, 'w') as file:
+        file.write(fid_results)
 
 
 def plot_new_generated_data(vae, dataset_type, n_samples, vae_loss_type, weights_directory, results_directory, BETAS):
@@ -68,7 +68,7 @@ def main():
         BETAS = VAE.get_betas_by_loss_type(loss_type)
         n_samples = 5
         plot_new_generated_data(vae, dataset_type, n_samples, loss_type, weights_directory, results_directory, BETAS)
-        calc_fid(vae, dataset_type, loss_type, weights_directory, results_directory, BETAS)
+        #calc_fid(vae, dataset_type, loss_type, weights_directory, results_directory, BETAS)
 
 
 if __name__ == '__main__':

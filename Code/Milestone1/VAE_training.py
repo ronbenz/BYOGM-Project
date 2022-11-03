@@ -109,6 +109,8 @@ def train(dataset_name, dataloader, vae, loss_type, num_of_epochs, beta, device,
         vae_sched.step()
         if loss_type == "momentum_perceptual":
             perceptual_loss_network.update_target_weights(vae.encoder)
+            if epoch == 0:
+              perceptual_loss_network.encoder.eval()
 
         print("epoch:{} training loss: {:.5f} epoch time: {:.3f} sec".format(epoch+1, train_results.losses[-1],
                                                                               time.time() - epoch_start_time))
