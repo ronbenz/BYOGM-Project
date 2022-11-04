@@ -139,8 +139,8 @@ def main():
     # (so the batches are always of the same size)
     # define pre-procesing transformation to use
     # dataset_name = "cifar10"
-    dataset_name = "svhn"
-    # dataset_name = "flowers"
+    # dataset_name = "svhn"
+    dataset_name = "flowers"
     transform = torchvision.transforms.ToTensor()
 
     if dataset_name == "cifar10":
@@ -151,6 +151,7 @@ def main():
                                                target_transform=None, download=True)
     else:
         resize_transform = torchvision.transforms.Compose([transform, torchvision.transforms.Resize((VAE.X_DIM, VAE.X_DIM), interpolation=torchvision.transforms.InterpolationMode.BICUBIC)])
+        #resize_transform = torchvision.transforms.Compose([transform, torchvision.transforms.CenterCrop(VAE.X_DIM)])
         train_data = torchvision.datasets.Flowers102('./datasets/', split="train", transform=resize_transform,
                                                      target_transform=None, download=True)
 
@@ -160,8 +161,8 @@ def main():
     kl_y_label = "KL_error"
     loss_y_label = "Loss"
     # here we go
-    #loss_types = ["momentum_perceptual", "vgg_perceptual", "mse"]
-    loss_types = ["momentum_perceptual"]
+    loss_types = ["momentum_perceptual", "vgg_perceptual", "mse"]
+    # loss_types = ["momentum_perceptual"]
     perceptual_loss_network = None
     for loss_type in loss_types:
         print("loss type: ", loss_type)

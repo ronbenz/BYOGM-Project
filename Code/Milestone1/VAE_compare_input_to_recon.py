@@ -55,9 +55,10 @@ def plot_samples_and_recons(vae, dataset_type, n_samples, samples, vae_loss_type
 
 def main():
     # dataset_type = "cifar10"
-    dataset_type = "svhn"
-    #loss_types = ["mse", "vgg_perceptual"]
-    loss_types = ["momentum_perceptual"]
+    #dataset_type = "svhn"
+    dataset_type = "flowers"
+    loss_types = ["momentum_perceptual","mse", "vgg_perceptual"]
+    #loss_types = ["momentum_perceptual"]
     weights_directory = pathlib.Path("/home/user_115/Project/Code/Milestone1/VAE_training_checkpoints")
     results_directory = pathlib.Path("/home/user_115/Project/Results/Milestone1/VAE_compare_input_to_recon")
     #device = torch.device("cpu")
@@ -70,10 +71,13 @@ def main():
     if dataset_type == "cifar10":
         test_data = torchvision.datasets.CIFAR10('./datasets/', train=False, transform=transform,
                                                  target_transform=None, download=True)
-    else:
+    elif dataset_type == "svhn":
         test_data = torchvision.datasets.SVHN('./datasets/', split="test", transform=transform,
                                               target_transform=None, download=True)
-
+    else:
+        resize_transform = torchvision.transforms.Compose([transform, torchvision.transforms.Resize((VAE.X_DIM, VAE.X_DIM), interpolation=torchvision.transforms.InterpolationMode.BICUBIC)])
+        # resize_transform = torchvision.transforms.Compose([transform, torchvision.transforms.CenterCrop(VAE.X_DIM)])
+        test_data = torchvision.datasets.Flowers102('./datasets/', split="test", transform=resize_transform, target_transform=None, download=True)
     dataloader = DataLoader(test_data, batch_size=n_samples, shuffle=True, drop_last=True)
     samples, _ = next(iter(dataloader))
     for loss_type in loss_types:
