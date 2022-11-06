@@ -18,9 +18,9 @@ class MomentumEncoder:
         for target_param, online_param in zip(target_model.parameters(), online_model.parameters()):
             target_weight, online_weight = target_param.data, online_param.data
             target_param.data = target_weight*self.weights_factor + (1-self.weights_factor)*online_weight
-        for target_buffer, online_buffer in zip(target_model.buffers(), online_model.buffers()):
-            target_buffer_data, online_buffer_data = target_buffer.data, online_buffer.data
-            target_buffer.data = target_buffer_data*self.weights_factor + (1-self.weights_factor)*online_buffer_data
+        # for target_buffer, online_buffer in zip(target_model.buffers(), online_model.buffers()):
+        #     target_buffer_data, online_buffer_data = target_buffer.data, online_buffer.data
+        #     target_buffer.data = target_buffer_data*self.weights_factor + (1-self.weights_factor)*online_buffer_data
 
     def extract_feature_maps(self, x):
         feature_maps = []

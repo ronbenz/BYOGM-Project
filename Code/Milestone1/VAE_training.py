@@ -16,7 +16,7 @@ import scipy
 BATCH_SIZE = 128
 LEARNING_RATE = 2e-4  # for the gradient optimizer
 NUM_WARMUP_EPOCHS = 200
-NUM_EPOCHS = 200
+NUM_EPOCHS = 300
 #NUM_EPOCHS = 1
 
 
@@ -78,7 +78,8 @@ def train(dataset_name, dataloader, vae, loss_type, num_of_epochs, beta, device,
 
     # optimizer & scheduler
     vae_optim = torch.optim.Adam(params=vae.parameters(), lr=LEARNING_RATE)
-    vae_sched = torch.optim.lr_scheduler.MultiStepLR(vae_optim, milestones=[num_of_epochs*0.5, num_of_epochs*0.75], gamma=0.1)
+    #vae_sched = torch.optim.lr_scheduler.MultiStepLR(vae_optim, milestones=[num_of_epochs*0.5, num_of_epochs*0.75], gamma=0.1)
+    vae_sched = torch.optim.lr_scheduler.MultiStepLR(vae_optim, milestones=[200, 250], gamma=0.1)
     # save the losses from each epoch, we might want to plot it later
     for epoch in range(num_of_epochs):
         print(f"epoch #{epoch+1}")
@@ -109,8 +110,8 @@ def train(dataset_name, dataloader, vae, loss_type, num_of_epochs, beta, device,
         vae_sched.step()
         if loss_type == "momentum_perceptual":
             perceptual_loss_network.update_target_weights(vae.encoder)
-            if epoch == 0:
-              perceptual_loss_network.encoder.eval()
+            # if epoch == 0:
+            #   perceptual_loss_network.encoder.eval()
 
         print("epoch:{} training loss: {:.5f} epoch time: {:.3f} sec".format(epoch+1, train_results.losses[-1],
                                                                               time.time() - epoch_start_time))
@@ -162,7 +163,7 @@ def main():
     loss_y_label = "Loss"
     # here we go
     loss_types = ["momentum_perceptual", "vgg_perceptual", "mse"]
-    # loss_types = ["momentum_perceptual"]
+    #loss_types = ["momentum_perceptual"]
     perceptual_loss_network = None
     for loss_type in loss_types:
         print("loss type: ", loss_type)

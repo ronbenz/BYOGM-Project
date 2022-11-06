@@ -34,7 +34,7 @@ def plot_samples_and_recons(vae, dataset_type, n_samples, samples, vae_loss_type
     for sample_idx in range(n_samples):
         sample = samples[sample_idx].view(3, VAE.X_DIM, VAE.X_DIM)
         ax = fig.add_subplot(len(BETAS) + 1, n_samples, sample_idx + 1)
-        ax.imshow(sample.cpu().numpy().transpose(1, 2, 0))
+        ax.imshow(sample.data.cpu().numpy().transpose(1, 2, 0))
         ax.set_axis_off()
         ax.set_title(f'original')
     for i in range(len(BETAS)):

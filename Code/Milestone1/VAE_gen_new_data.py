@@ -56,8 +56,8 @@ def plot_new_generated_data(vae, dataset_type, n_samples, vae_loss_type, weights
 
 
 def main():
-    # loss_types = ["momentum_perceptual","vgg_perceptual","mse"]
     loss_types = ["momentum_perceptual","vgg_perceptual","mse"]
+    # loss_types = ["momentum_perceptual"]
     # dataset_type = "cifar10"
     # dataset_type = "svhn"
     dataset_type = "flowers"
