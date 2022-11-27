@@ -4,16 +4,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 import VAE_training
 
-HIDDEN_DIMS = [64, 128, 256, 512]  # size of the hidden layers outputs in the networks
+#HIDDEN_DIMS = [64, 128, 256, 512]  # size of the hidden layers outputs in the networks
 INPUT_CHANNELS = 3
-X_DIM = 32  # size of the input dimension
+X_DIM = 64  # size of the input dimension
+# X_DIM = 128  # size of the input dimension
 Z_DIM = 128  # size of the latent dimension
-MOMENTUM_PERCEPTUAL_BETAS = [0.1, 1, 10, 30]
+MOMENTUM_PERCEPTUAL_BETAS = [0.7]
 #MOMENTUM_PERCEPTUAL_BETAS = [1e-3, 1e-2, 1e-1, 1]
 # MOMENTUM_PERCEPTUAL_BETAS = [10, 100, 1000]
 VGG_PERCEPTUAL_BETAS = [1, 30, 40, 50]
 # VGG_PERCEPTUAL_BETAS = [50]
-MSE_BETAS = [1e-3, 1e-2, 1e-1, 1]
+MSE_BETAS = [0.01]
 # MSE_BETAS = []
 WARMUP_BETA = 1e-1
 
@@ -21,13 +22,22 @@ WARMUP_BETA = 1e-1
 class VaeEncoder(torch.nn.Module):
     def __init__(self, in_channels, z_dim):
         super(VaeEncoder, self).__init__()
-        hidden_dims = [64, 64, 128, 128, 256, 256, 512, 512]
+        # hidden_dims for 32x32 input images
+        # hidden_dims = [64, 64, 128, 128, 256, 256, 512, 512]
+        # hidden_dims for 64x64 input images
+        hidden_dims = [32, 64, 128, 256, 512]
+        # hidden_dims for 128x128 input images
+        # hidden_dims = [16, 32, 64, 128, 256, 512]
+
         modules = []
+        # stride for 128x128
+        stride = 2
         for idx, h_dim in enumerate(hidden_dims):
-            if (idx % 2) == 0:
-                stride = 2
-            else:
-                stride = 1
+            # stride when duplicating layers
+            # if (idx % 2) == 0:
+            #     stride = 2
+            # else:
+            #     stride = 1
             modules.append(
                 nn.Sequential(
                     nn.Conv2d(in_channels, out_channels=h_dim, kernel_size=3, stride=stride, padding=1),
@@ -182,7 +192,12 @@ class VaeDecoder(torch.nn.Module):
     ############# Regular Decoder version #############
     def __init__(self, z_dim):
         super(VaeDecoder, self).__init__()
-        hidden_dims = [512, 256, 128, 64]
+        # hidden_dims for 32x32 input images
+        # hidden_dims = [512, 256, 128, 64]
+        # hidden_dims for 64x64 input images
+        hidden_dims = [512, 256, 128, 64, 32]
+        # hidden_dims for 128x128 input images
+        # hidden_dims = [512, 256, 128, 64, 32, 16]
         modules = []
         self.first_layer = nn.Linear(z_dim, hidden_dims[0] * 4)
         for i in range(len(hidden_dims) - 1):
@@ -211,12 +226,13 @@ class VaeDecoder(torch.nn.Module):
 
 
 class Vae(torch.nn.Module):
-    def __init__(self, x_dim=32, in_channels=3, z_dim=128):
+    def __init__(self, x_dim=32, in_channels=3, z_dim=128, device="cuda:0"):
         super(Vae, self).__init__()
         self.x_dim = x_dim
         self.z_dim = z_dim
         self.encoder = VaeEncoder(in_channels, z_dim)
         self.decoder = VaeDecoder(z_dim)
+        self.device = device
 
     def encode(self, input):
         return self.encoder.forward(input)
@@ -265,7 +281,7 @@ class Vae(torch.nn.Module):
         :param num_samples: (Int) Number of samples
         :return: (Tensor)
         """
-        z = torch.randn(num_samples, self.z_dim)
+        z = torch.randn(num_samples, self.z_dim).to(torch.device(self.device))
         return self.decode(z)
 
 
