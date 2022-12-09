@@ -32,8 +32,9 @@ def plot_samples_and_recons(vae, dataset_type, n_samples, samples, vae_loss_type
     fig = plt.figure(figsize=(32, 16))
     fig.suptitle(f'Compare input to reconstruction - {vae_loss_type}', fontsize=40)
     for sample_idx in range(n_samples):
-        sample = samples[sample_idx].view(3, VAE.X_DIM, VAE.X_DIM)
+        sample = samples[sample_idx].view(VAE.INPUT_CHANNELS, VAE.X_DIM, VAE.X_DIM)
         ax = fig.add_subplot(len(BETAS) + 1, n_samples, sample_idx + 1)
+        # ax.imshow(sample.data.cpu().numpy().transpose(1, 2, 0), cmap='gray')
         ax.imshow(sample.data.cpu().numpy().transpose(1, 2, 0))
         ax.set_axis_off()
         ax.set_title(f'original')
@@ -44,8 +45,9 @@ def plot_samples_and_recons(vae, dataset_type, n_samples, samples, vae_loss_type
         vae.load_state_dict(torch.load(fname))
         recon_samples, _, _ = vae.forward(samples.to(device))
         for sample_idx in range(n_samples):
-            recon_sample = recon_samples[sample_idx].view(3, VAE.X_DIM, VAE.X_DIM)
+            recon_sample = recon_samples[sample_idx].view(VAE.INPUT_CHANNELS, VAE.X_DIM, VAE.X_DIM)
             ax = fig.add_subplot(len(BETAS) + 1, n_samples, sample_idx + 1 + (i + 1) * n_samples)
+            # ax.imshow(recon_sample.data.cpu().numpy().transpose(1, 2, 0), cmap='gray')
             ax.imshow(recon_sample.data.cpu().numpy().transpose(1, 2, 0))
             ax.set_axis_off()
             ax.set_title(f'beta_{BETAS[i]} recon')
@@ -55,11 +57,13 @@ def plot_samples_and_recons(vae, dataset_type, n_samples, samples, vae_loss_type
 
 def main():
     # dataset_type = "cifar10"
-    # dataset_type = "svhn"
+    dataset_type = "svhn"
     # dataset_type = "flowers"
-    dataset_type = "cars"
-    #loss_types = ["momentum_perceptual", "mse", "vgg_perceptual"]
-    loss_types = ["mse"]
+    # dataset_type = "cars"
+    # dataset_type = "stl10"
+    # dataset_type = "fashion_mnist"
+    loss_types = ["momentum_perceptual", "mse", "vgg_perceptual"]
+    #loss_types = ["vgg_perceptual"]
     weights_directory = pathlib.Path("/home/user_115/Project/Code/Milestone1/VAE_training_checkpoints")
     results_directory = pathlib.Path("/home/user_115/Project/Results/Milestone1/VAE_compare_input_to_recon")
     #device = torch.device("cpu")
@@ -80,8 +84,17 @@ def main():
                                               target_transform=None, download=True)
     elif dataset_type == "flowers":
         test_data = torchvision.datasets.Flowers102(root, split="test", transform=resize_transform, target_transform=None, download=True)
-    else:
+
+    elif dataset_type == "cars":
         test_data = torchvision.datasets.StanfordCars(root, split="test", transform=resize_transform, target_transform=None, download=True)
+
+    elif dataset_type == "stl10":
+        # train set has fewer images, so we use it as test
+        test_data = torchvision.datasets.STL10(root, split="train", transform=resize_transform,
+                                                target_transform=None, download=True)
+    else:
+        test_data = torchvision.datasets.FashionMNIST(root, train=False, transform=resize_transform,
+                                                       target_transform=None, download=True)
 
     dataloader = DataLoader(test_data, batch_size=n_samples, shuffle=True, drop_last=True)
     samples, _ = next(iter(dataloader))

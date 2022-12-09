@@ -6,16 +6,16 @@ import VAE_training
 
 #HIDDEN_DIMS = [64, 128, 256, 512]  # size of the hidden layers outputs in the networks
 INPUT_CHANNELS = 3
-X_DIM = 64  # size of the input dimension
+X_DIM = 32  # size of the input dimension
 # X_DIM = 128  # size of the input dimension
 Z_DIM = 128  # size of the latent dimension
-MOMENTUM_PERCEPTUAL_BETAS = [0.7]
-#MOMENTUM_PERCEPTUAL_BETAS = [1e-3, 1e-2, 1e-1, 1]
+#MOMENTUM_PERCEPTUAL_BETAS = [0.1, 0.5, 1, 2, 4, 6, 8, 10, 15, 20]
+MOMENTUM_PERCEPTUAL_BETAS = [2]
 # MOMENTUM_PERCEPTUAL_BETAS = [10, 100, 1000]
-VGG_PERCEPTUAL_BETAS = [1, 30, 40, 50]
-# VGG_PERCEPTUAL_BETAS = [50]
-MSE_BETAS = [0.01]
-# MSE_BETAS = []
+#VGG_PERCEPTUAL_BETAS = [25, 30, 35, 40, 45, 50, 55, 60, 65, 70]
+VGG_PERCEPTUAL_BETAS = [70]
+#MSE_BETAS = [0.001, 0.005, 0.01, 0.05, 0.075, 0.1, 0.3, 0.5, 1, 2]
+MSE_BETAS = [0.05]
 WARMUP_BETA = 1e-1
 
 
@@ -23,9 +23,10 @@ class VaeEncoder(torch.nn.Module):
     def __init__(self, in_channels, z_dim):
         super(VaeEncoder, self).__init__()
         # hidden_dims for 32x32 input images
+        hidden_dims = [64, 128, 256, 512]
         # hidden_dims = [64, 64, 128, 128, 256, 256, 512, 512]
         # hidden_dims for 64x64 input images
-        hidden_dims = [32, 64, 128, 256, 512]
+        # hidden_dims = [32, 64, 128, 256, 512]
         # hidden_dims for 128x128 input images
         # hidden_dims = [16, 32, 64, 128, 256, 512]
 
@@ -193,9 +194,9 @@ class VaeDecoder(torch.nn.Module):
     def __init__(self, z_dim):
         super(VaeDecoder, self).__init__()
         # hidden_dims for 32x32 input images
-        # hidden_dims = [512, 256, 128, 64]
+        hidden_dims = [512, 256, 128, 64]
         # hidden_dims for 64x64 input images
-        hidden_dims = [512, 256, 128, 64, 32]
+        # hidden_dims = [512, 256, 128, 64, 32]
         # hidden_dims for 128x128 input images
         # hidden_dims = [512, 256, 128, 64, 32, 16]
         modules = []
@@ -214,7 +215,7 @@ class VaeDecoder(torch.nn.Module):
                                    output_padding=1),
                 nn.BatchNorm2d(hidden_dims[-1]),
                 nn.LeakyReLU(),
-                nn.Conv2d(hidden_dims[-1], out_channels=3, kernel_size=3, padding=1),
+                nn.Conv2d(hidden_dims[-1], out_channels=INPUT_CHANNELS, kernel_size=3, padding=1),
                 nn.Sigmoid()))
         self.layers = nn.Sequential(*modules)
 

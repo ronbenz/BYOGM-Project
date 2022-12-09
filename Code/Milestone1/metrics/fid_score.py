@@ -67,6 +67,12 @@ parser.add_argument('-c', '--gpu', default='', type=str,
                     help='GPU to use (leave blank for CPU only)')
 
 
+def get_batch_as_rgb(batch):
+    if batch.size()[1] == 1:
+        return batch.tile([1, 3, 1, 1])
+    return batch
+
+
 def imread(filename):
     """
     Loads an image file into a (height, width, 3) uint8 ndarray.
@@ -137,7 +143,7 @@ def get_activations(files, model, batch_size=50, dims=2048,
         batch = torch.from_numpy(images).type(torch.FloatTensor)
         if cuda:
             batch = batch.to(device)
-
+        batch = get_batch_as_rgb(batch)
         pred = model(batch)[0]
 
         # If model output is not scalar, apply global spatial average pooling.
@@ -183,6 +189,7 @@ def get_activations_given_dataset(dataloader, model, batch_size=50, dims=2048,
             batch = batch[0]
         if cuda:
             batch = batch.to(device)
+        batch = get_batch_as_rgb(batch)
         res = model(batch)[0]
         # if idx == 0:
         #     print(batch[0].min())
@@ -257,6 +264,7 @@ def get_activations_generate(model_s, model, batch_size=50, dims=2048,
         batch = torch.from_numpy(images).type(torch.FloatTensor)
         if cuda:
             batch = batch.to(device)
+        batch = get_batch_as_rgb(batch)
         res = model(batch)[0]
 
         activations.append(res.cpu().data.numpy().reshape(res.size(0), -1))

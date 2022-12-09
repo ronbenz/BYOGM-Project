@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 import torchvision.models as models
+from fid_score import get_batch_as_rgb
 from collections import namedtuple
 
 
@@ -29,6 +30,8 @@ class VggPerceptualLossNetwork(torch.nn.Module):
         return FeatureMaps(**feature_maps)
 
     def calc_loss(self, input, target):
+        input = get_batch_as_rgb(input)
+        target = get_batch_as_rgb(target)
         input_features = self.forward(input)
         target_features = self.forward(target)
         loss = F.mse_loss(input, target, reduction='sum')
